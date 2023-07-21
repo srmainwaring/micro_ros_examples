@@ -1,3 +1,7 @@
+// micro-xrce-dds
+#include "uxr/client/client.h"
+
+// micro-ros
 #include <rcl/rcl.h>
 #include <rcl/error_handling.h>
 #include <rclc/rclc.h>
@@ -6,6 +10,11 @@
 #include <geometry_msgs/msg/vector3.h>
 
 #include <stdio.h>
+
+// ardupilot
+#include "Socket.h"
+
+#define AP_UROS_UDP_ENABLED 1
 
 #define RCCHECK(fn) {\
   rcl_ret_t temp_rc = fn;\
@@ -29,7 +38,7 @@ geometry_msgs__msg__Vector3 msg;
 class AP_UROS_Client
 {
 public:
-    bool start();
+    void start();
     void main_loop();
     bool init();
     bool create();
@@ -45,7 +54,7 @@ public:
             uint8_t* buf, size_t len, int timeout, uint8_t* error);
 
     struct {
-        AP_Int32 port;
+        uint16_t port {2019};
         // UDP endpoint
         const char* ip = "127.0.0.1";
         // UDP Allocation
@@ -68,7 +77,7 @@ void subscription_callback(const void * msgin)
   printf("Vector3: x: %f, y: %f, z: %f\n", msg->x, msg->y, msg->z);
 }
 
-bool AP_UROS_Client::start()
+void AP_UROS_Client::start()
 {
     main_loop();
 }
@@ -94,7 +103,7 @@ void AP_UROS_Client::main_loop()
 bool AP_UROS_Client::init()
 {
     // initialize transport
-    bool initTransportStatus = true;
+    bool initTransportStatus = false;
 
 #if AP_UROS_UDP_ENABLED
     // fallback to UDP if available
@@ -128,7 +137,6 @@ bool AP_UROS_Client::init()
     printf("UROS: init complete\n");
 
     return true;
-
 }
 
 bool AP_UROS_Client::create()
@@ -147,6 +155,107 @@ bool AP_UROS_Client::create()
 
     return true;
 }
+
+#if AP_UROS_UDP_ENABLED
+
+#include <rmw_microros/custom_transport.h>
+
+#include <errno.h>
+
+/*
+  open connection on UDP
+ */
+bool AP_UROS_Client::udp_transport_open(uxrCustomTransport *t)
+{
+    printf("udp_transport_open\n");
+
+    AP_UROS_Client *uros = (AP_UROS_Client *)t->args;
+    auto *sock = new SocketAPM(true);
+    if (sock == nullptr) {
+        return false;
+    }
+    if (!sock->connect(uros->udp.ip, uros->udp.port)) {
+        return false;
+    }
+    uros->udp.socket = sock;
+    return true;
+}
+
+/*
+  close UDP connection
+ */
+bool AP_UROS_Client::udp_transport_close(uxrCustomTransport *t)
+{
+    printf("udp_transport_close\n");
+
+    AP_UROS_Client *uros = (AP_UROS_Client *)t->args;
+    delete uros->udp.socket;
+    uros->udp.socket = nullptr;
+    return true;
+}
+
+/*
+  write on UDP
+ */
+size_t AP_UROS_Client::udp_transport_write(uxrCustomTransport *t,
+    const uint8_t* buf, size_t len, uint8_t* error)
+{
+    printf("udp_transport_write: len: %zu\n", len);
+
+    AP_UROS_Client *uros = (AP_UROS_Client *)t->args;
+    if (uros->udp.socket == nullptr) {
+        *error = EINVAL;
+        return 0;
+    }
+    const ssize_t ret = uros->udp.socket->send(buf, len);
+    if (ret <= 0) {
+        *error = errno;
+        return 0;
+    }
+    return ret;
+}
+
+/*
+  read from UDP
+ */
+size_t AP_UROS_Client::udp_transport_read(uxrCustomTransport *t,
+    uint8_t* buf, size_t len, int timeout_ms, uint8_t* error)
+{
+    printf("udp_transport_read: len: %zu\n", len);
+
+    AP_UROS_Client *uros = (AP_UROS_Client *)t->args;
+    if (uros->udp.socket == nullptr) {
+        *error = EINVAL;
+        return 0;
+    }
+    const ssize_t ret = uros->udp.socket->recv(buf, len, timeout_ms);
+    if (ret <= 0) {
+        *error = errno;
+        return 0;
+    }
+    return ret;
+}
+
+/*
+  initialise UDP connection
+ */
+bool AP_UROS_Client::urosUdpInit()
+{
+    printf("urosUdpInit\n");
+
+    // setup a non-framed transport for UDP
+    rmw_ret_t rcl_ret = rmw_uros_set_custom_transport(
+            false,
+            (void*)this,
+            udp_transport_open,
+            udp_transport_close,
+            udp_transport_write,
+            udp_transport_read);
+
+    return (rcl_ret == RCL_RET_OK);
+}
+
+#endif // AP_UROS_UDP_ENABLED
 
 int main()
 {

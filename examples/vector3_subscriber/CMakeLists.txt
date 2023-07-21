@@ -7,7 +7,17 @@ set(MICROROS_INCLUDE_DIR ${MICROROS_DIR}/include)
 set(MICROROS_LIBRARY_DIR ${MICROROS_DIR})
 message("MICROROS_DIR: ${MICROROS_DIR}")
 
-include_directories(
+link_directories(
+  ${MICROROS_LIBRARY_DIR}
+)
+
+add_executable(${PROJECT_NAME}
+  main.cpp
+  Socket.cpp
+)
+
+target_include_directories(${PROJECT_NAME}
+  PUBLIC
   ${MICROROS_INCLUDE_DIR}
   ${MICROROS_INCLUDE_DIR}/rcl
   ${MICROROS_INCLUDE_DIR}/rcl_action
@@ -24,12 +34,7 @@ include_directories(
   ${MICROROS_INCLUDE_DIR}/unique_identifier_msgs
 )
 
-link_directories(
-  ${MICROROS_LIBRARY_DIR}
-)
-
-link_libraries(
+target_link_libraries(${PROJECT_NAME}
+  PUBLIC
   microros
 )
-
-add_executable(${PROJECT_NAME} main.cpp)
