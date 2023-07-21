@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 
-project(tfmessage_subscriber LANGUAGES C)
+project(tfmessage_subscriber)
 
 set(MICROROS_DIR "${CMAKE_SOURCE_DIR}/firmware/build" CACHE STRING "micro-ROS build directory")
 set(MICROROS_INCLUDE_DIR ${MICROROS_DIR}/include)
@@ -33,4 +33,4 @@ link_libraries(
   microros
 )
 
-add_executable(${PROJECT_NAME} main.c)
+add_executable(${PROJECT_NAME} main.cpp)
