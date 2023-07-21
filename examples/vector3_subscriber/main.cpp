@@ -85,10 +85,10 @@ void AP_UROS_Client::main_loop()
 
 
     // periodic actions
-    // rclc_executor_spin(&executor);
+    rclc_executor_spin(&executor);
 
-    // RCSOFTCHECK(rcl_subscription_fini(&subscriber, &node));
-    // RCSOFTCHECK(rcl_node_fini(&node));
+    RCSOFTCHECK(rcl_subscription_fini(&subscriber, &node));
+    RCSOFTCHECK(rcl_node_fini(&node));
 }
 
 bool AP_UROS_Client::init()
@@ -111,19 +111,19 @@ bool AP_UROS_Client::init()
         return false;
     }
 
-    // // create allocator
-    // allocator = rcl_get_default_allocator();
+    // create allocator
+    allocator = rcl_get_default_allocator();
 
-    // // create init_options
-    // RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
+    // create init_options
+    RCCHECK(rclc_support_init(&support, 0, NULL, &allocator));
 
-    // // create node
-    // RCCHECK(rclc_node_init_default(
-    //     &node, "ardupilot_uros_rclc", "", &support));
+    // create node
+    RCCHECK(rclc_node_init_default(
+        &node, "ardupilot_uros_rclc", "", &support));
 
-    // // create executor
-    // executor = rclc_executor_get_zero_initialized_executor();
-    // RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+    // create executor
+    executor = rclc_executor_get_zero_initialized_executor();
+    RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
 
     printf("UROS: init complete\n");
 
@@ -134,14 +134,14 @@ bool AP_UROS_Client::init()
 bool AP_UROS_Client::create()
 {
     // create subscriber
-    // RCCHECK(rclc_subscription_init_default(
-    //     &subscriber,
-    //     &node,
-    //     ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Vector3),
-    //     "geometry_msgs_msg_Vector3"));
+    RCCHECK(rclc_subscription_init_default(
+        &subscriber,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(geometry_msgs, msg, Vector3),
+        "geometry_msgs_msg_Vector3"));
 
-    // RCCHECK(rclc_executor_add_subscription(
-    //     &executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
+    RCCHECK(rclc_executor_add_subscription(
+        &executor, &subscriber, &msg, &subscription_callback, ON_NEW_DATA));
 
     printf("UROS: create complete\n");
 
